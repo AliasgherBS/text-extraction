@@ -1,17 +1,36 @@
+from fastapi import FastAPI, File, UploadFile
+from pydantic import BaseModel
+from ultralytics import YOLO
 import cv2
 import numpy as np
+import json
+from fastapi.middleware.cors import CORSMiddleware
 import pytesseract
 from pytesseract import Output
-import json
+
+app = FastAPI()
+
+# Enable CORS for all origins (not recommended for production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Load the YOLO model
-from ultralytics import YOLO
 model = YOLO('highlight.pt')
 
-def process_image(file_path):
+@app.post("/highlight")
+async def process_image(file: UploadFile):
+    # Save the uploaded image
+    with open("uploaded_image.jpg", "wb") as image_file:
+        image_file.write(file.file.read())
+
     # Run inference using the YOLO model
-    results = model(file_path)
-    image = cv2.imread(file_path)
+    results = model("uploaded_image.jpg")
+    image = cv2.imread("uploaded_image.jpg")
 
     # Convert the results to JSON format
     results = results[0].tojson()
@@ -34,7 +53,6 @@ def process_image(file_path):
         # Paste the cropped image onto the canvas
         canvas[y1:y2, x1:x2] = cropped_image
 
-    cv2.imwrite("image.jpg", canvas)
     # Convert the merged image to grayscale for OCR
     gray_canvas = cv2.cvtColor(canvas, cv2.COLOR_BGR2GRAY)
 
@@ -44,7 +62,5 @@ def process_image(file_path):
     return extracted_text
 
 if __name__ == "__main__":
-    # Replace 'your_input_image.jpg' with the path to your input image
-    input_image_path = 'h2.jpg'
-    extracted_text = process_image(input_image_path)
-    print(extracted_text)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7000)

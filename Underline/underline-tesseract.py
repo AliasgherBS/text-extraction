@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import pytesseract
 from pytesseract import Output
+import json
 
 # Load the YOLO model
 from ultralytics import YOLO
